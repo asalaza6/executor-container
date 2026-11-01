@@ -1,4 +1,4 @@
-# Upgrade from 0.2.0 to 0.3.0
+# Upgrade from 0.1.12 or 0.2.0 to 0.3.0
 
 English | [简体中文](UPGRADE.zh-CN.md)
 
@@ -15,6 +15,21 @@ This guide is for the combined `follow-stack-…` container kit. Native
 quantity: the leader still sends `next_rth_open` exit plans (a stop cancel and
 an exit shortly before the regular open), so 0.2.0's pre-open protection stays valid, and 0.2.0
 ignores the new `sizing` field. It never uses signal weights or your balance.
+
+## Starting from 0.1.12
+
+The reviewed 0.1.12 Gateway change consists only of three setup messages about
+separate Gateway and phone usernames. The updater accepts the exact published
+old/new Gateway bytecode pair; journal and Docker Gateway code must still match.
+Unknown changes remain blocked. Existing account mode, fixed size, credentials
+and journal are preserved. Use the same steps below, substituting your retained
+`~/follow-stack-0.1.12-ubuntu24.04-arm64-cp312` directory for every 0.2.0 path.
+Do not stop until the whole account is flat with no working orders. Gateway must
+be authenticated for the read-only maintenance check. An upgrade never starts
+trading, changes account mode or selects balance sizing for you.
+
+This path requires a kit built with this compatibility fix; the original
+published v0.3.0 kit does not contain it. Do not edit its hashes to bypass checks.
 
 ## What is kept
 

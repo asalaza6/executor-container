@@ -227,6 +227,42 @@ class MaintenanceTests(unittest.TestCase):
                 self.environment([]), self.assertRaisesRegex(ConfigError, "reviewed migration"):
             maintenance.switch(self.new, self.old.release)
 
+    def test_reviewed_gateway_pair_upgrade_and_rollback_preserve_state(self):
+        from follow_executor.release import verify_release
+        old_gateway, new_gateway = next(iter(maintenance.REVIEWED_GATEWAY_MIGRATIONS))
+        def versions(path):
+            result = verify_release(path)
+            result["compatibility"]["gateway"] = old_gateway if path == self.old.release else new_gateway
+            if path == self.old.release:
+                result["compatibility"].update(maintenance.REVIEWED_MIGRATIONS["0.2.0"])
+            return result
+        before = journal_snapshot(self.config)
+        credentials = (self.old.gateway_dir / "ibc.ini").read_bytes()
+        with patch.object(maintenance, "verify_release", side_effect=versions):
+            with self.environment(["UPGRADE PAPER 1 MNQ"]):
+                self.assertEqual(maintenance.switch(self.new, self.old.release), 0)
+            with self.environment(["ROLLBACK PAPER 1 MNQ"]):
+                self.assertEqual(maintenance.switch(self.new, rollback=True), 0)
+        self.assertEqual(journal_snapshot(self.config), before)
+        self.assertEqual((self.old.gateway_dir / "ibc.ini").read_bytes(), credentials)
+
+    def test_gateway_exception_rejects_unreviewed_endpoints_and_shared_changes(self):
+        old_gateway, new_gateway = next(iter(maintenance.REVIEWED_GATEWAY_MIGRATIONS))
+        old = dict(maintenance.REVIEWED_MIGRATIONS["0.2.0"],
+                   gateway=old_gateway, journal="same", gateway_docker="same")
+        new = dict(old, gateway=new_gateway, config="new config", local="new local")
+        self.assertTrue(maintenance.reviewed_migration(old, new, rollback=False))
+        self.assertTrue(maintenance.reviewed_migration(new, old, rollback=True))
+        self.assertFalse(maintenance.reviewed_migration(new, old, rollback=False))
+        for field in ("gateway", "journal", "gateway_docker", "config", "local"):
+            with self.subTest(field=field):
+                self.assertFalse(maintenance.reviewed_migration(dict(old, **{field: "unknown"}), new,
+                                                                 rollback=False))
+        for field in ("gateway", "journal", "gateway_docker"):
+            with self.subTest(target=field):
+                self.assertFalse(maintenance.reviewed_migration(old, dict(new, **{field: "unknown"}),
+                                                                 rollback=False))
+
     def test_reviewed_list_names_the_published_release(self):
         self.assertEqual(set(maintenance.REVIEWED_MIGRATIONS), {"0.2.0"})
         for digests in maintenance.REVIEWED_MIGRATIONS.values():

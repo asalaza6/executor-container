@@ -183,9 +183,12 @@ then stops Gateway and replaces service definitions and the pinned executor imag
 Both services remain stopped. Credentials, Gateway's existing persistent Docker
 volume, trading history and existing halts remain in place. This procedure keeps
 the same Gateway image and requires identical journal/configuration/Gateway code;
-schema changes or Gateway upgrades need a separately reviewed migration. The one
-reviewed migration is **0.2.0 to 0.3.0**: journal and Gateway code are identical
-and 0.3.0 reads 0.2.0 settings unchanged. Follow the [0.2.0 upgrade guide](UPGRADE.md),
+schema changes or Gateway upgrades need a separately reviewed migration.
+The reviewed migrations are **0.1.12 or 0.2.0 to 0.3.0**.
+For 0.1.12, only the exact published Gateway pair with three added setup
+messages is accepted; journal and Docker Gateway code must still match.
+For 0.2.0, journal and Gateway code are identical
+and 0.3.0 reads 0.2.0 settings unchanged. Follow the [upgrade guide](UPGRADE.md),
 which adds choosing the leverage fraction with `./follow-stack settings`. Rolling
 back to 0.2.0 requires a fixed size first, because 0.2.0 cannot read balance sizing.
 
