@@ -24,7 +24,7 @@ old/new Gateway bytecode pair; journal and Docker Gateway code must still match.
 Unknown changes remain blocked. Existing account mode, fixed size, credentials
 and journal are preserved. Use the same steps below, substituting your retained
 `~/follow-stack-0.1.12-ubuntu24.04-arm64-cp312` directory for every 0.2.0 path.
-Do not stop until the whole account is flat with no working orders. Gateway must
+Do not stop until the account has no blocking positions or working orders (see the unrelated-stock exception below). Gateway must
 be authenticated for the read-only maintenance check. An upgrade never starts
 trading, changes account mode or selects balance sizing for you.
 
@@ -39,7 +39,7 @@ private backup of the configuration and a consistent journal backup. It replaces
 the executor image and regenerates both service definitions. It never closes
 positions, cancels orders or starts trading.
 
-## 1. Wait until the whole account is flat
+## 1. Check account positions and working orders
 
 Choose a time with **no position and no working order** in the IBKR account, for
 example after the scheduled exit or at the weekend. Check in IBKR, then from the
@@ -63,7 +63,7 @@ Still in the 0.2.0 directory:
 ./follow-stack stop
 ```
 
-Keep **Gateway logged in**; the upgrade's read-only flat-account check uses it.
+Keep **Gateway logged in**; the upgrade's read-only maintenance check uses it.
 Do not delete or move `~/.config/follow-executor` or
 `~/.local/state/follow-executor`. Keep the 0.2.0 directory in place: the upgrade
 and any rollback read it.
@@ -175,7 +175,7 @@ directory, first return to a fixed size, then roll back:
 ./follow-stack rollback
 ```
 
-Rollback repeats the flat-account check, keeps the current journal, and leaves
+Rollback repeats the maintenance holdings/order check, keeps the current journal, and leaves
 both services stopped. Continue from the 0.2.0 directory with `gateway start`,
 `check` and an explicit `start`.
 
