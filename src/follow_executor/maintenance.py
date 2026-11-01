@@ -161,13 +161,13 @@ def switch(wizard, source_path: Path | None = None, *, rollback: bool = False) -
     config_hash = configuration_hash(source.config.parent)
     verb = "ROLLBACK" if rollback else "UPGRADE"
     print(f"{verb}: {source_meta['executor_image']['id'][:19]} -> {target_meta['executor_image']['id'][:19]}")
-    print("After a read-only flat-account check, Gateway will stop and both services will remain stopped.")
+    print("After a read-only maintenance holdings/order check, Gateway will stop and both services will remain stopped.")
     confirmation = f"{verb} {current.ibkr.account_type.upper()} {current.size_label}"
     if input(f"Type {confirmation} to continue: ").strip() != confirmation:
         return 3
     report = wizard.maintenance_report(wizard.image_metadata()["id"])
-    if report.get("account_flat") is not True or report.get("orders_submitted") != 0:
-        raise ConfigError("Complete read-only flat-account verification did not pass.")
+    if report.get("maintenance_ready") is not True or report.get("orders_submitted") != 0:
+        raise ConfigError("Complete read-only maintenance verification did not pass.")
     backup = wizard.state / "maintenance" / (datetime.now(UTC).strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8])
     record = {"phase": "pending", "operation": verb.lower(), "backup": str(backup),
               "from_release": str(source.release), "to_release": str(target.release),

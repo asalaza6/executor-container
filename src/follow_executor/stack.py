@@ -120,7 +120,7 @@ class Stack:
         result = subprocess.run([str(self.release / "follow-container"), "maintenance-check"],
                                 env=env, text=True, capture_output=True, check=False)
         if result.returncode:
-            raise ConfigError("Maintenance check failed. Verify account access, complete snapshots and a flat account; "
+            raise ConfigError("Maintenance check failed. Verify account access, complete snapshots, no blocking positions and no working orders; "
                               "no services were changed. The journal may retain an existing halt.")
         return json.loads(result.stdout)
 

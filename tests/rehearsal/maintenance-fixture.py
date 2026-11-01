@@ -82,7 +82,7 @@ def main():
             command += ["--mount", f"type=bind,src={directory},dst={directory},readonly"]
         command += ["--entrypoint", "python", new.image_metadata()["id"], "-c", code, str(new.config)]
         result = json.loads(stack.command(command).stdout)
-        return result | {"account_flat": True, "orders_submitted": 0}
+        return result | {"maintenance_ready": True, "orders_submitted": 0}
 
     with patch.object(stack.Stack, "maintenance_report", side_effect=probe), \
             patch.object(stack.sys.stdin, "isatty", return_value=True), \

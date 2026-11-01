@@ -178,3 +178,15 @@ directory, first return to a fixed size, then roll back:
 Rollback repeats the flat-account check, keeps the current journal, and leaves
 both services stopped. Continue from the 0.2.0 directory with `gateway start`,
 `check` and an explicit `start`.
+
+### Unrelated stock holdings during maintenance
+
+The maintenance probe still requires complete account-wide position and open-order
+snapshots. It permits unrelated long `STK` holdings, including fractional reward
+shares. Futures of every root, short stocks, options, unknown contract types and
+all working orders still block the switch. Missing stock symbols also block it.
+This exception applies only to the upgrade/rollback maintenance probe; trading
+readiness, journal reconciliation and start checks are unchanged. It does not
+close or cancel anything, and a successful switch leaves both services stopped.
+The report uses `maintenance_ready`, not `account_flat`, because permitted stock
+holdings mean the account is not entirely flat.

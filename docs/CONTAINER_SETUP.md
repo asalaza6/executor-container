@@ -372,3 +372,15 @@ dependency sources using the trusted SHA-256 above. The collector checks archive
 and file hashes; the kit builder checks the complete installed image inventory.
 If pins change, collect new sources without `--reuse-archive` and review their
 provenance. Never substitute newer source versions for installed dependencies.
+
+### Unrelated stock holdings during maintenance
+
+The maintenance probe still requires complete account-wide position and open-order
+snapshots. It permits unrelated long `STK` holdings, including fractional reward
+shares. Futures of every root, short stocks, options, unknown contract types and
+all working orders still block the switch. Missing stock symbols also block it.
+This exception applies only to the upgrade/rollback maintenance probe; trading
+readiness, journal reconciliation and start checks are unchanged. It does not
+close or cancel anything, and a successful switch leaves both services stopped.
+The report uses `maintenance_ready`, not `account_flat`, because permitted stock
+holdings mean the account is not entirely flat.
