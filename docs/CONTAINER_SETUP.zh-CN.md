@@ -9,7 +9,7 @@
 
 **从未用过终端？先看[零基础指南](SETUP.zh-CN.md)。**本页是技术安装、维护及恢复参考。
 
-0.3.0 已准备用于小范围模拟账户接入。
+0.3.1 已准备用于小范围模拟账户接入。
 验证范围见[版本说明](RELEASE_NOTES.zh-CN.md)。既有安装保留原后端，迁移需明确安排。此向导支持全新安装和继续自己的已有安装，
 不会覆盖其他安装的 Gateway 服务或自动更换已固定的执行器镜像。
 兼容版本可在停止且空仓时使用下方明确的升级／回退命令。原生安装迁移仍需单独审查；
@@ -19,7 +19,7 @@
 向导前完成 [IBKR 附加账户／第二用户名准备](IBKR_ACCOUNT_SETUP.zh-CN.md)。
 新实例使用 **2 OCPU／12 GB 内存**，Gateway 与手机交易使用不同用户名，并单独核验模拟登录。
 
-## 0.3.0 凭据隔离
+## 0.3.1 凭据隔离
 
 执行器容器无法读取管理的 Gateway 凭据目录或维护备份。空的只读挂载遮蔽这两个
 子目录，凭据、Gateway 数据卷及交易日志仍保留原主机路径，主机控制程序与 Gateway
@@ -151,8 +151,9 @@ API/VNC 仅监听本机；用 SSH 转发 VNC。配置、凭据、Gateway 卷和�
 输入显示的确认后，创建私密配置备份及一致的 SQLite 备份，再停止 Gateway、更换服务定义和
 固定的执行器镜像。两个服务均保持停止。凭据、Gateway 原有持久卷、交易历史及暂停状态保留。
 该过程保留同一个 Gateway 镜像，并要求日志、配置和 Gateway 代码完全兼容；数据库结构或
-Gateway 版本变化需要另行审查迁移。唯一经过审查的迁移是 **0.2.0 到 0.3.0**：交易日志和
-Gateway 代码相同，0.3.0 可原样读取 0.2.0 的设置。请按 [0.2.0 升级指南](UPGRADE.zh-CN.md)操作，
+Gateway 版本变化需要另行审查迁移。从 0.3.0 升级时兼容性摘要完全相同，无需迁移，回滚到 0.3.0 也可保留余额仓位。经过审查的迁移是 **0.1.12 或 0.2.0 到 0.3.1**。
+对 0.1.12，只接受仅增加三条设置提示的已发布 Gateway 字节码对；交易日志和 Docker Gateway 代码仍须一致。
+对 0.2.0，交易日志和 Gateway 代码相同，0.3.1 可原样读取 0.2.0 的设置。请按 [升级指南](UPGRADE.zh-CN.md)操作，
 其中包括用 `./follow-stack settings` 选择杠杆比例。回滚到 0.2.0 前必须先改回固定数量，因为 0.2.0 无法读取余额仓位。
 
 从选定版本运行 `./follow-stack gateway start`、批准登录、`./follow-stack check`，再明确
@@ -174,10 +175,10 @@ Gateway 代码相同，0.3.0 可原样读取 0.2.0 的设置。请按 [0.2.0 升
 在源码目录中，使用独立输出目录：
 
 ```bash
-python3.12 scripts/build-executor-container.py --tag follow-executor:0.3.0 --output dist/container-wizard/image
-python3.12 scripts/test-executor-container.py --image follow-executor:0.3.0
+python3.12 scripts/build-executor-container.py --tag follow-executor:0.3.1 --output dist/container-wizard/image
+python3.12 scripts/test-executor-container.py --image follow-executor:0.3.1
 curl --fail --location --output /tmp/follow-dependencies.tar.gz https://github.com/quantmnq/executor-container/releases/download/v0.1.12/follow-executor-0.1.12-dependencies.tar.gz
-python3.12 scripts/collect-third-party-source.py --image follow-executor:0.3.0 --reuse-archive /tmp/follow-dependencies.tar.gz --reuse-sha256 c2740a33b3f91508c70116d4c0a4389b47fe2fd1748b16b5cf9f480dac0bb769
+python3.12 scripts/collect-third-party-source.py --image follow-executor:0.3.1 --reuse-archive /tmp/follow-dependencies.tar.gz --reuse-sha256 c2740a33b3f91508c70116d4c0a4389b47fe2fd1748b16b5cf9f480dac0bb769
 python3.12 scripts/build-container-kit.py --build dist/container-wizard/image/BUILD.json --third-party dist/third-party/SOURCES.json --output dist/container-wizard/kit
 ```
 
@@ -279,6 +280,14 @@ Gateway，确认认证且空仓，配置和交易日志不变，所有执行器�
 周日观测同样没有验证新的手机认证请求或实时行情。
 不要仅为安装器测试重跑已经完成的模拟交易周期。
 
-0.3.0 的依赖固定版本与 0.1.12 相同，上述命令按可信 SHA-256 复用该版准确的依赖源码。
+0.3.1 的依赖固定版本与 0.1.12 相同，上述命令按可信 SHA-256 复用该版准确的依赖源码。
 收集器验证压缩包及文件哈希，组合包构建器继续核对镜像完整依赖清单。依赖变更时，不带
 `--reuse-archive` 重新收集并核对来源；不得用较新源码替代实际安装的依赖版本。
+
+### 维护期间的无关股票持仓
+
+维护检查仍要求完整的全账户持仓和未完成订单快照。它允许无关的多头 `STK`
+持仓，包括碎股奖励股票。任何品种的期货、空头股票、期权、未知合约类型以及所有活动订单
+仍会阻止切换；缺少股票代码同样会阻止。此例外只适用于升级／回滚维护检查；交易就绪检查、
+交易日志对账和启动检查不变。它不会平仓或撤单，切换成功后两个服务均保持停止。
+由于允许的股票持仓意味着账户并非完全空仓，报告使用 `maintenance_ready` 而不是 `account_flat`。

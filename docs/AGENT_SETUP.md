@@ -76,8 +76,8 @@ fixed `MNQ`/`NQ` quantity. With `balance` it asks for the **leverage fraction**
 - The start confirmation names the size: `START PAPER BALANCE 0.5` (or
   `START PAPER 1 MNQ` for a fixed size).
 
-Existing 0.2.0 customers upgrade with [UPGRADE.md](UPGRADE.md); their fixed size
-keeps working until they choose balance sizing.
+Existing 0.1.12, 0.2.0 or 0.3.0 customers upgrade with [UPGRADE.md](UPGRADE.md); their
+sizing, fixed or balance, keeps working unchanged.
 
 | Information | How to obtain it |
 | --- | --- |

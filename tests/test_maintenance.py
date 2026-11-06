@@ -82,7 +82,7 @@ class MaintenanceTests(unittest.TestCase):
     @contextlib.contextmanager
     def environment(self, answers):
         def probe(wizard, image_id):
-            return journal_snapshot(self.config) | {"account_flat": True, "orders_submitted": 0}
+            return journal_snapshot(self.config) | {"maintenance_ready": True, "orders_submitted": 0}
 
         with (patch.object(stack, "host_check"), patch.object(stack, "docker_access"),
               patch.object(stack, "service_state", return_value="inactive"),
@@ -142,8 +142,8 @@ class MaintenanceTests(unittest.TestCase):
         for answers, fail in ((["no"], False), (["UPGRADE PAPER 1 MNQ"], True)):
             with self.subTest(fail=fail), self.environment(answers) as commands:
                 if fail:
-                    with patch.object(stack.Stack, "maintenance_report", return_value={"account_flat": False}), \
-                            self.assertRaisesRegex(ConfigError, "flat-account"):
+                    with patch.object(stack.Stack, "maintenance_report", return_value={"maintenance_ready": False}), \
+                            self.assertRaisesRegex(ConfigError, "maintenance verification"):
                         maintenance.switch(self.new, self.old.release)
                 else:
                     self.assertEqual(maintenance.switch(self.new, self.old.release), 3)
@@ -153,7 +153,7 @@ class MaintenanceTests(unittest.TestCase):
     def test_changed_configuration_between_probe_and_switch_is_refused(self):
         def altered(*args):
             self.config.token_path.write_text("changed fixture token")
-            return journal_snapshot(self.config) | {"account_flat": True, "orders_submitted": 0}
+            return journal_snapshot(self.config) | {"maintenance_ready": True, "orders_submitted": 0}
         with self.environment(["UPGRADE PAPER 1 MNQ"]) as commands, \
                 patch.object(stack.Stack, "maintenance_report", side_effect=altered), \
                 self.assertRaisesRegex(ConfigError, "changed during maintenance"):
@@ -227,6 +227,42 @@ class MaintenanceTests(unittest.TestCase):
                 self.environment([]), self.assertRaisesRegex(ConfigError, "reviewed migration"):
             maintenance.switch(self.new, self.old.release)
 
+    def test_reviewed_gateway_pair_upgrade_and_rollback_preserve_state(self):
+        from follow_executor.release import verify_release
+        old_gateway, new_gateway = next(iter(maintenance.REVIEWED_GATEWAY_MIGRATIONS))
+        def versions(path):
+            result = verify_release(path)
+            result["compatibility"]["gateway"] = old_gateway if path == self.old.release else new_gateway
+            if path == self.old.release:
+                result["compatibility"].update(maintenance.REVIEWED_MIGRATIONS["0.2.0"])
+            return result
+        before = journal_snapshot(self.config)
+        credentials = (self.old.gateway_dir / "ibc.ini").read_bytes()
+        with patch.object(maintenance, "verify_release", side_effect=versions):
+            with self.environment(["UPGRADE PAPER 1 MNQ"]):
+                self.assertEqual(maintenance.switch(self.new, self.old.release), 0)
+            with self.environment(["ROLLBACK PAPER 1 MNQ"]):
+                self.assertEqual(maintenance.switch(self.new, rollback=True), 0)
+        self.assertEqual(journal_snapshot(self.config), before)
+        self.assertEqual((self.old.gateway_dir / "ibc.ini").read_bytes(), credentials)
+
+    def test_gateway_exception_rejects_unreviewed_endpoints_and_shared_changes(self):
+        old_gateway, new_gateway = next(iter(maintenance.REVIEWED_GATEWAY_MIGRATIONS))
+        old = dict(maintenance.REVIEWED_MIGRATIONS["0.2.0"],
+                   gateway=old_gateway, journal="same", gateway_docker="same")
+        new = dict(old, gateway=new_gateway, config="new config", local="new local")
+        self.assertTrue(maintenance.reviewed_migration(old, new, rollback=False))
+        self.assertTrue(maintenance.reviewed_migration(new, old, rollback=True))
+        self.assertFalse(maintenance.reviewed_migration(new, old, rollback=False))
+        for field in ("gateway", "journal", "gateway_docker", "config", "local"):
+            with self.subTest(field=field):
+                self.assertFalse(maintenance.reviewed_migration(dict(old, **{field: "unknown"}), new,
+                                                                 rollback=False))
+        for field in ("gateway", "journal", "gateway_docker"):
+            with self.subTest(target=field):
+                self.assertFalse(maintenance.reviewed_migration(old, dict(new, **{field: "unknown"}),
+                                                                 rollback=False))
+
     def test_reviewed_list_names_the_published_release(self):
         self.assertEqual(set(maintenance.REVIEWED_MIGRATIONS), {"0.2.0"})
         for digests in maintenance.REVIEWED_MIGRATIONS.values():
@@ -285,3 +321,57 @@ class MaintenanceTests(unittest.TestCase):
             probe._managed = (self.config.ibkr.account,)
             with self.assertRaisesRegex(ConfigError, "positions or working orders"):
                 check(self.config)
+
+    def probe_report(self, probe):
+        with patch("follow_executor.maintenance_probe.FlatAccountProbe", return_value=probe), \
+                patch.object(probe, "connect"), patch.object(probe, "disconnect"), \
+                patch.object(probe, "refresh"), patch.object(probe, "wait_for_snapshot"):
+            probe._managed = (self.config.ibkr.account,)
+            return check(self.config)
+
+    def test_maintenance_allows_unrelated_long_stock_without_claiming_account_flat(self):
+        probe = FlatAccountProbe(self.config.ibkr, self.config.root)
+        probe.on_position(self.config.ibkr.account, SimpleNamespace(conId=99, symbol="IBKR", secType="STK"), 0.5, 1)
+        report = self.probe_report(probe)
+        self.assertTrue(report["maintenance_ready"])
+        self.assertEqual(report["unrelated_stock_holdings"], 1)
+        self.assertEqual(report["orders_submitted"], 0)
+        self.assertNotIn("account_flat", report)
+        self.assertTrue(report["halt_present"])
+
+    def test_stock_exception_fails_closed_for_other_exposures(self):
+        for kind, symbol, quantity in [("FUT", "MNQ", 1), ("FUT", "NQ", 1), ("FUT", "ES", 1),
+                                       ("OPT", "IBKR", 1), ("", "IBKR", 1), ("STK", "", 1),
+                                       ("STK", "IBKR", -1), ("STK", "MNQ", 1), ("STK", "NQ", 1)]:
+            with self.subTest(kind=kind, symbol=symbol, quantity=quantity):
+                probe = FlatAccountProbe(self.config.ibkr, self.config.root)
+                probe.on_position(self.config.ibkr.account,
+                                  SimpleNamespace(conId=99, symbol=symbol, secType=kind), quantity, 1)
+                with self.assertRaisesRegex(ConfigError, "blocking positions"):
+                    self.probe_report(probe)
+
+    def test_stock_holdings_do_not_exempt_any_working_orders(self):
+        for account in ("", self.config.ibkr.account):
+            probe = FlatAccountProbe(self.config.ibkr, self.config.root)
+            contract = SimpleNamespace(conId=99, symbol="IBKR", secType="STK")
+            probe.on_position(self.config.ibkr.account, contract, 0.5, 1)
+            probe.on_open_order(5, contract, SimpleNamespace(account=account, whatIf=False),
+                                SimpleNamespace(status="Submitted"))
+            with self.assertRaisesRegex(ConfigError, "working orders"):
+                self.probe_report(probe)
+
+    def test_stock_snapshot_updates_and_incomplete_snapshots(self):
+        probe = FlatAccountProbe(self.config.ibkr, self.config.root)
+        contract = SimpleNamespace(conId=99, symbol="IBKR", secType="STK")
+        probe.on_position(self.config.ibkr.account, contract, 0.5, 1)
+        probe.on_position(self.config.ibkr.account, contract, -1, 1)
+        with self.assertRaises(ConfigError):
+            self.probe_report(probe)
+        probe.on_position(self.config.ibkr.account, contract, 0, 1)
+        self.assertEqual(self.probe_report(probe)["unrelated_stock_holdings"], 0)
+        with patch("follow_executor.maintenance_probe.FlatAccountProbe", return_value=probe), \
+                patch.object(probe, "connect"), patch.object(probe, "disconnect"), \
+                patch.object(probe, "refresh"), \
+                patch.object(probe, "wait_for_snapshot", side_effect=RuntimeError("incomplete snapshot")), \
+                self.assertRaisesRegex(RuntimeError, "incomplete snapshot"):
+            check(self.config)

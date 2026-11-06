@@ -22,6 +22,9 @@ from . import gateway, gateway_docker
 from .config import ConfigError, load_config
 from .local import exclusive, private_write
 
+# Exact refusal raised by gateway.configure before it saves anything.
+RECOVERY_PASSWORD_ERROR = "Use matching recovery passwords of exactly 8 printable ASCII characters"
+
 
 def command(args: list[str], *, capture: bool = True) -> subprocess.CompletedProcess:
     result = subprocess.run(args, text=True, capture_output=capture, check=False)
@@ -120,7 +123,7 @@ class Stack:
         result = subprocess.run([str(self.release / "follow-container"), "maintenance-check"],
                                 env=env, text=True, capture_output=True, check=False)
         if result.returncode:
-            raise ConfigError("Maintenance check failed. Verify account access, complete snapshots and a flat account; "
+            raise ConfigError("Maintenance check failed. Verify account access, complete snapshots, no blocking positions and no working orders; "
                               "no services were changed. The journal may retain an existing halt.")
         return json.loads(result.stdout)
 
@@ -215,14 +218,31 @@ class Stack:
 
     def gateway_action(self, action: str, *, vnc: bool | None = None) -> int:
         self.require_gateway_ownership()
+        if action not in ("configure", "container-stop"):
+            for name in ("gateway.json", "ibc.ini"):
+                path = self.gateway_dir / name
+                if not path.exists() and not path.is_symlink():
+                    raise ConfigError(f"Gateway configuration is incomplete: {name} is missing. "
+                                      "Rerun './follow-stack setup' to continue; saved account settings are reused.")
         if action != "container-stop" and (self.gateway_dir / "gateway.json").exists():
             # Deliberate reconfiguration can repair an interrupted credential save;
             # runtime/start still require the complete, consistent saved settings.
             settings = gateway.load_settings(self.gateway_dir, check_consistency=action != "configure")
             if settings.get("backend") != "docker":
                 raise ConfigError("Existing native Gateway settings need a reviewed migration.")
-        result = gateway.dispatch(self.config, action, backend="docker" if action == "configure" else None,
-                                  vnc=vnc, launcher=self.launcher)
+        while True:
+            try:
+                result = gateway.dispatch(self.config, action, backend="docker" if action == "configure" else None,
+                                          vnc=vnc, launcher=self.launcher)
+                break
+            except ConfigError as error:
+                # gateway.py stays byte-identical for reviewed upgrades, so retry its
+                # recovery-password refusal here. Nothing is saved before that check.
+                if action != "configure" or str(error) != RECOVERY_PASSWORD_ERROR:
+                    raise
+                print("Recovery desktop password: use exactly 8 printable ASCII characters with no spaces, "
+                      "entered twice identically. It is not your IBKR password. Nothing was saved; "
+                      "the Gateway questions repeat. Press Ctrl+C to pause setup.", flush=True)
         if result == 0 and action in ("configure", "refresh"):
             private_write(self.gateway_unit, self.gateway_unit_text(gateway.load_settings(self.gateway_dir)))
             command(["systemctl", "--user", "daemon-reload"])
@@ -316,8 +336,16 @@ class Stack:
         self.require_idle()
         if not lingering():
             raise ConfigError("Run setup to enable services after logout and reboot.")
-        if not self.pin.exists() or not self.unit_path.exists() or not self.gateway_unit.exists():
-            raise ConfigError("Run './follow-stack setup' first.")
+        missing = [label for path, label in (
+            (self.pin, "executor image installation (step 2/5)"),
+            (self.unit_path, "executor service (step 2/5)"),
+            (self.config, "account configuration (step 3/5)"),
+            (self.gateway_dir / "gateway.json", "Gateway configuration (step 4/5)"),
+            (self.gateway_unit, "Gateway service (step 4/5)"),
+        ) if not path.exists()]
+        if missing:
+            raise ConfigError("Setup is incomplete: missing " + ", ".join(missing)
+                              + ". Rerun './follow-stack setup' to continue; saved account settings are reused.")
         if self.pin.read_text().strip() != self.image_metadata()["id"]:
             raise ConfigError("Installed executor image differs from this release; review the upgrade.")
         current = self.current_config()
@@ -336,6 +364,9 @@ class Stack:
         print(f"Startup after logout/reboot: {'enabled' if lingering() else 'needs setup'}")
         print(f"Executor configuration: {'saved' if self.config.exists() else 'needs setup'}")
         print(f"Executor service: {service_state(self.unit)}")
+        gateway_saved = (self.gateway_dir / "gateway.json").exists()
+        print(f"Gateway configuration: {'saved' if gateway_saved else 'needs setup (step 4/5)'}")
+        print(f"Gateway service definition: {'installed' if self.gateway_unit.exists() else 'missing (step 4/5)'}")
         print(f"Gateway service: {service_state(gateway.SERVICE)} (process state, not login readiness)")
         print("Continue setup: ./follow-stack setup; check broker/relay while stopped: ./follow-stack check")
         return 0

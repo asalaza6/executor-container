@@ -122,7 +122,7 @@ case "$action" in
     if systemctl --user is-active --quiet "$unit" || systemctl --user is-enabled --quiet "$unit"; then
       fail 'Stop the container service before changing its installed image.'
     fi
-    image=$(docker image inspect --format '{{.Id}}' "${FOLLOW_EXECUTOR_IMAGE:-follow-executor:0.3.0}")
+    image=$(docker image inspect --format '{{.Id}}' "${FOLLOW_EXECUTOR_IMAGE:-follow-executor:0.3.1}")
     [[ "$image" =~ ^sha256:[a-f0-9]{64}$ ]] || fail 'Could not resolve a local image ID.'
     mkdir -p -- "$unit_dir"
     unit_tmp=$(mktemp "$unit_dir/.executor-container.XXXXXX")

@@ -21,7 +21,7 @@ checks it too. It contains the application, wizard, launchers, Dockerfile, build
 scripts, dependency pins, tests, docs and license notices. `SOURCE.json` records
 individual source-file hashes. It contains no Git history or machine configuration.
 
-For a container kit, also download `follow-executor-0.3.0-dependencies.tar.gz`
+For a container kit, also download `follow-executor-0.3.1-dependencies.tar.gz`
 from the **same release page as the installation archive**. Its SHA-256 is in
 `RELEASE.json` under `third_party_source`. This separate download is for inspection
 and rebuilding; normal installation does not need it. It includes the exact
@@ -49,7 +49,7 @@ python3.12 scripts/build-executor-container.py
 python3.12 scripts/test-executor-container.py
 python3.12 scripts/test-executor-isolation.py
 curl --fail --location --output /tmp/follow-dependencies.tar.gz https://github.com/quantmnq/executor-container/releases/download/v0.1.12/follow-executor-0.1.12-dependencies.tar.gz
-python3.12 scripts/collect-third-party-source.py --image follow-executor:0.3.0 --reuse-archive /tmp/follow-dependencies.tar.gz --reuse-sha256 c2740a33b3f91508c70116d4c0a4389b47fe2fd1748b16b5cf9f480dac0bb769
+python3.12 scripts/collect-third-party-source.py --image follow-executor:0.3.1 --reuse-archive /tmp/follow-dependencies.tar.gz --reuse-sha256 c2740a33b3f91508c70116d4c0a4389b47fe2fd1748b16b5cf9f480dac0bb769
 python3.12 scripts/build-container-kit.py --build dist/executor-container/BUILD.json --third-party dist/third-party/SOURCES.json
 ```
 
@@ -73,7 +73,7 @@ A modified build must use matching source and notices too. The checksums are
 integrity checks, not DRM: regenerate the kit using the supplied build scripts.
 See [release instructions](RELEASING.md) for source delivery and publication.
 
-For 0.3.0, runtime pins match 0.1.12, so the commands retain that release's exact
+For 0.3.1, runtime pins match 0.1.12, so the commands retain that release's exact
 dependency sources using the trusted SHA-256 above. The collector checks archive
 and file hashes; the kit builder checks the complete installed image inventory.
 If pins change, collect new sources without `--reuse-archive` and review their

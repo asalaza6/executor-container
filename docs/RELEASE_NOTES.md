@@ -1,13 +1,73 @@
-# Auto Quant 0.3.0 — balance sizing with NQ + MNQ
+# Auto Quant 0.3.1 — upgrade and setup fixes
 
 English | [简体中文](RELEASE_NOTES.zh-CN.md)
+
+Prepared November 6, 2026 (US Pacific). A maintenance release of 0.3.0 with
+contributed fixes. Trading behavior, sizing, protection rules, dependencies and
+the Gateway image are unchanged.
+
+## New in 0.3.1
+
+- **Upgrade from 0.1.12.** `follow-stack upgrade` now accepts 0.1.12 kits. Their
+  only Gateway code difference is three setup messages; the updater pins the exact
+  published old/new Gateway bytecode pair, and journal, configuration and Docker
+  Gateway code must still match. Unknown changes remain blocked. The v0.3.0 kit
+  refuses 0.1.12, so upgrade directly to 0.3.1.
+- **Upgrade from 0.3.0.** Journal, configuration and Gateway code are identical,
+  so no migration is needed and balance sizing is kept, including on rollback.
+- **Unrelated stock holdings during maintenance.** The upgrade/rollback check
+  still needs complete account-wide snapshots, but now permits unrelated long
+  `STK` holdings such as fractional reward shares. Futures of every root, short
+  stock, options, unknown contract types, missing symbols and all working orders
+  still block it. Its report says `maintenance_ready` instead of `account_flat`.
+  Trading readiness, reconciliation and start checks are unchanged.
+- **Sizing changes use one IBKR connection.** `./follow-stack settings`
+  previously reconnected immediately with the same client ID when changing
+  roots or switching to balance sizing, which could fail with IBKR error 326.
+  It now checks all old and new roots through one connection; every flat,
+  order, snapshot, account, journal and halt check is kept.
+- **Setup recovery.** A mistyped or mismatched recovery-desktop password is
+  asked again instead of ending setup. `start` names any missing setup step,
+  `doctor` shows Gateway configuration and service-definition status, and a
+  missing Gateway file is no longer reported as a permissions problem.
+- **IBKR error 354** is explained as a missing market-data subscription for the
+  Gateway username; live quotes are still required before trading.
+- **Guides:** loopback-only SSH tunnels with `ExitOnForwardFailure`, macOS VNC,
+  local-port conflicts and market-data subscription troubleshooting.
+
+Thanks to the contributor of
+[#1](https://github.com/quantmnq/executor-container/pull/1),
+[#2](https://github.com/quantmnq/executor-container/pull/2) and
+[#3](https://github.com/quantmnq/executor-container/pull/3). The setup
+password retry is implemented in the stack controller so that Gateway code stays
+byte-identical for reviewed upgrades.
+
+## Update to 0.3.1
+
+From 0.3.0, 0.2.0 or 0.1.12, follow [UPGRADE.md](UPGRADE.md): stop the
+executor from the old directory while the account has no blocking positions or
+working orders, keep Gateway logged in, extract 0.3.1 into a new directory and
+run `./follow-stack upgrade --from <old directory>`. Both services stay stopped.
+From 0.3.0, skip choosing the leverage fraction; your sizing is kept.
+
+## Validation and scope (0.3.1)
+
+336 source tests passed, including from the extracted corresponding source; 305
+tests passed inside the final ARM64 image (one skipped: example configurations
+need the source checkout). Docker lifecycle and credential-isolation checks
+passed, including with the final kit's launcher. The kit's journal, configuration
+and Gateway bytecode match 0.3.0 exactly; the 0.2.0 and 0.1.12 kits pass the
+reviewed compatibility check. Tests use mocked brokers: the one-connection
+settings change and the stock-holding exception have not yet run against a real
+Gateway. No running installation was updated and no broker orders were placed.
+
+## Retained from 0.3.0 — balance sizing with NQ + MNQ
 
 Prepared October 28, 2026 (US Pacific). Under the leader's current sizing, each
 trade is sized from the leader's balance and the weight its signal carries.
 Version 0.3.0 lets followers do the same at a fraction of the leader's leverage, trading NQ plus an MNQ remainder
 as one book. Dependencies, the Gateway image and the protection rules are retained.
 
-## New in 0.3.0
 
 - **Leverage fraction.** Setup asks for `f`, above 0 and at most 1; `1` follows
   the leader's 6x balance sizing with its 5.88x–6.6x band. The configuration is
@@ -49,7 +109,7 @@ as one book. Dependencies, the Gateway image and the protection rules are retain
 ## Update from 0.2.0
 
 While the whole account is flat: stop the executor from the 0.2.0 directory,
-keeping Gateway logged in and the journal and token in place. Extract the 0.3.0
+keeping Gateway logged in and the journal and token in place. Extract the 0.3.1
 kit into a new directory and run `./follow-stack upgrade --from <0.2.0 directory>`,
 which regenerates both services and leaves them stopped. Then `./follow-stack
 gateway start`, `./follow-stack settings` to choose the fraction,

@@ -8,7 +8,7 @@
 
 ## 构建与验证
 
-0.3.0 新增余额仓位：领单方区间的杠杆比例、每个信号携带的权重以及 NQ + MNQ 组合。选择启用的配置会改变交易行为；0.2.0 配置保持固定数量。保护规则保留。`follow-stack upgrade` 接受经过审查的 0.2.0 → 0.3.0 迁移，因此 journal、gateway 和 gateway_docker 模块必须与 0.2.0 字节一致；请用 `follow_executor.release.verify_release` 对两个安装包核对。使用 Ubuntu 24.04
+0.3.1 是 0.3.0（余额仓位：领单方区间的杠杆比例、每个信号携带的权重以及 NQ + MNQ 组合）的维护版本，不改变交易行为。`follow-stack upgrade` 接受 0.3.0（兼容性摘要相同）、经过审查的 0.2.0 迁移，以及 `maintenance.REVIEWED_GATEWAY_MIGRATIONS` 中经过审查的 0.1.12 Gateway 字节码对。因此 journal、gateway 和 gateway_docker 模块必须与 0.2.0/0.3.0 字节一致；请用 `follow_executor.release.verify_release` 对每个安装包核对。0.3.0 自身的 config/local 摘要不在已审查迁移中，修改上述任一模块也会阻止 0.3.0 升级，除非新增审查条目。使用 Ubuntu 24.04
 ARM64、CPython 3.12 和 Docker。同步更新 `pyproject.toml`、启动器/测试的默认镜像
 标签和中英文示例中的版本号。旧发布压缩包保持不变。
 
@@ -20,7 +20,7 @@ python3.12 scripts/build-executor-container.py
 python3.12 scripts/test-executor-container.py
 python3.12 scripts/test-executor-isolation.py
 curl --fail --location --output /tmp/follow-dependencies.tar.gz https://github.com/quantmnq/executor-container/releases/download/v0.1.12/follow-executor-0.1.12-dependencies.tar.gz
-python3.12 scripts/collect-third-party-source.py --image follow-executor:0.3.0 --reuse-archive /tmp/follow-dependencies.tar.gz --reuse-sha256 c2740a33b3f91508c70116d4c0a4389b47fe2fd1748b16b5cf9f480dac0bb769
+python3.12 scripts/collect-third-party-source.py --image follow-executor:0.3.1 --reuse-archive /tmp/follow-dependencies.tar.gz --reuse-sha256 c2740a33b3f91508c70116d4c0a4389b47fe2fd1748b16b5cf9f480dac0bb769
 python3.12 scripts/build-container-kit.py --build dist/executor-container/BUILD.json --third-party dist/third-party/SOURCES.json
 python3.12 scripts/build-source.py --output dist/source --export dist/public-repository
 ```
@@ -52,12 +52,12 @@ LICENSE、NOTICE 和 THIRD_PARTY_LICENSES 保留在最终镜像。不要删除�
 VM 的秘密文件。应包含 `.github/`、`.gitignore` 等公开隐藏文件，但不能复制工作
 VM 的 `.git/` 历史。代码没有假定仓库网址。
 
-创建与 0.3.0 对应的 release/tag，上传审核过的以下文件：
+创建与 0.3.1 对应的 release/tag，上传审核过的以下文件：
 
-- `follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz`
+- `follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz`
 - 对应的 `.tar.gz.sha256` 校验文件
-- `follow-executor-0.3.0-source.tar.gz`（安装包内部也包含）
-- `follow-executor-0.3.0-dependencies.tar.gz`
+- `follow-executor-0.3.1-source.tar.gz`（安装包内部也包含）
+- `follow-executor-0.3.1-dependencies.tar.gz`
 - 覆盖这些发布文件的 `SHA256SUMS`
 
 在二进制下载旁边免费提供对应源码下载。不能要求已经收到软件的用户续订信号服务，
@@ -73,7 +73,7 @@ VM 的 `.git/` 历史。代码没有假定仓库网址。
 
 ## 客户下载与 Discord
 
-将源码发布到公开 GitHub 仓库，将上述五个附件放在 **v0.3.0 Release**。
+将源码发布到公开 GitHub 仓库，将上述五个附件放在 **v0.3.1 Release**。
 在 GitHub 打开 **Releases → Draft a new release**，选择匹配的源码提交／标签，
 上传附件并填写版本说明。首次模拟账户接入可标记为 pre-release（预发布）。
 发布后先核实实际下载文件，再向客户发送链接。
@@ -102,6 +102,6 @@ VM 的 `.git/` 历史。代码没有假定仓库网址。
 已有安装；AMD64 不是支持的客户平台。修改上游 Gateway 摘要需要单独进行登录/恢复
 验收，与源码发布打包检查分开。
 
-0.3.0 的依赖固定版本与 0.1.12 相同，上述命令按可信 SHA-256 复用该版准确的依赖源码。
+0.3.1 的依赖固定版本与 0.1.12 相同，上述命令按可信 SHA-256 复用该版准确的依赖源码。
 收集器验证压缩包及文件哈希，组合包构建器继续核对镜像完整依赖清单。依赖变更时，不带
 `--reuse-archive` 重新收集并核对来源；不得用较新源码替代实际安装的依赖版本。

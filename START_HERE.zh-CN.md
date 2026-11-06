@@ -7,7 +7,7 @@
 打开终端、连接 Ubuntu、上传安装包及回答向导的步骤。Gateway 和执行器均使用容器，
 [English guide](docs/SETUP.md)。
 
-**已经在运行 0.2.0？** 不要重新安装。请在空仓时按[升级指南](docs/UPGRADE.zh-CN.md)操作：它会保留交易日志和令牌，安装本安装包，询问你的杠杆比例，并重新生成服务。[Upgrade guide (English)](docs/UPGRADE.md)。
+**已经在运行 0.1.12、0.2.0 或 0.3.0？** 不要重新安装。请在空仓时按[升级指南](docs/UPGRADE.zh-CN.md)操作：它会保留交易日志、令牌和仓位设置，安装本安装包，并重新生成服务。[Upgrade guide (English)](docs/UPGRADE.md)。
 
 如果压缩包以 `follow-executor-…` 而非 `follow-stack-…` 开头，请使用
 [原生指南](docs/SETUP_NATIVE.zh-CN.md)。下方 AI 流程适用于两种安装包，

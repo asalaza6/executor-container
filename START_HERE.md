@@ -9,9 +9,9 @@ shows how to open a terminal on Windows/Mac, connect to Ubuntu, transfer the
 kit and answer the wizard. Both Gateway and executor use containers.
 The Chinese guide is [here](docs/SETUP.zh-CN.md).
 
-**Already running 0.2.0?** Do not reinstall. Follow the
-[upgrade guide](docs/UPGRADE.md) while flat: it keeps your journal and token,
-installs this kit, asks for your leverage fraction and regenerates the service.
+**Already running 0.1.12, 0.2.0 or 0.3.0?** Do not reinstall. Follow the
+[upgrade guide](docs/UPGRADE.md) while flat: it keeps your journal, token and
+sizing, installs this kit and regenerates the services.
 [升级指南（中文）](docs/UPGRADE.zh-CN.md).
 
 If your archive is named `follow-executor-…` rather than `follow-stack-…`, use

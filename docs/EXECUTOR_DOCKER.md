@@ -21,7 +21,7 @@ python3.12 scripts/test-executor-container.py
 python3.12 scripts/test-executor-isolation.py
 ```
 
-The default tag is `follow-executor:0.3.0`. The builder records its image ID and
+The default tag is `follow-executor:0.3.1`. The builder records its image ID and
 input hashes in `dist/executor-container/BUILD.json`. The base image is pinned by
 digest; dependencies are version/hash-pinned. Official IBKR API 10.50.2 is fetched
 from the vendor and checksum-verified, never installed from PyPI's `ibapi`.
@@ -38,7 +38,7 @@ replay without another entry and retention of a safety halt. No real Gateway,
 relay or account is contacted.
 
 For local transfer, export with
-`docker save follow-executor:0.3.0 | gzip > executor-image.tar.gz` and load with
+`docker save follow-executor:0.3.1 | gzip > executor-image.tar.gz` and load with
 `docker load -i executor-image.tar.gz`. Supply the checksum, matching launcher and
 guides through the customer release channel. The bytecode kit includes the
 launcher/guides, but no image layers. No registry publication is performed.
@@ -90,7 +90,7 @@ retry and no restart for configuration error exit 2; Docker restart policy is of
 
 <a id="credential-isolation"></a>
 
-## Gateway credential isolation (0.3.0)
+## Gateway credential isolation (0.3.1)
 
 Every production executor invocation and generated service mounts an empty,
 read-only, non-executable tmpfs over these managed subdirectories:

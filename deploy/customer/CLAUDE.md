@@ -22,4 +22,4 @@ For Discord linking, show the bundled #bot-setup screenshot before the customer
 submits AQ Bot's `/link`, following the same preview/file-link guidance.
 The customer chooses the sizing: a leverage fraction above 0 and at most 1 of the
 leader's 6x balance sizing (NQ plus an MNQ remainder), or a fixed size. Existing
-0.2.0 installations upgrade with `docs/UPGRADE.md` while stopped and flat.
+0.1.12, 0.2.0 or 0.3.0 installations upgrade with `docs/UPGRADE.md` while stopped and flat.

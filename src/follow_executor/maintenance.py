@@ -19,7 +19,8 @@ from .release import verify_release
 
 # Reviewed migrations: earlier releases whose configuration and journal this
 # release reads unchanged, identified by their config/local bytecode digests.
-# Journal and Gateway code must still match exactly. A rollback to one of them
+# Journal and Docker Gateway code must match exactly; the host Gateway has
+# a separate exact-pair allowlist below. A rollback to one of them
 # is allowed only while the configuration uses a fixed quantity it can read.
 REVIEWED_MIGRATIONS = {
     "0.2.0": {"config": "082d4d0991e45ae8ba10b34adca27e360ff6b6d9ace5d700492d61dacf2ed927",
@@ -27,11 +28,20 @@ REVIEWED_MIGRATIONS = {
 }
 SHARED_MODULES = ("journal", "gateway", "gateway_docker")
 
+# 0.1.12 -> 0.2.0 only adds three explanatory print() calls in gateway.configure.
+# Pin both published endpoints; never accept an arbitrary changed Gateway module.
+REVIEWED_GATEWAY_MIGRATIONS = {
+    ("bd07061369f7b8eaa2ed244afb401bb36ad53ce75117cab191c96db87ea5ce13",
+     "439bb4c9cc4603e8c95f18a435a436339bdf0290f861caf52f55762d798b3aa5"),
+}
+
 
 def reviewed_migration(source: dict, target: dict, *, rollback: bool) -> bool:
     """True for a reviewed switch between this release and an older one."""
-    older = target if rollback else source
-    return (all(source[module] == target[module] for module in SHARED_MODULES)
+    older, newer = (target, source) if rollback else (source, target)
+    gateway_reviewed = (older["gateway"], newer["gateway"]) in REVIEWED_GATEWAY_MIGRATIONS
+    return (all(source[module] == target[module]
+                or (module == "gateway" and gateway_reviewed) for module in SHARED_MODULES)
             and any(all(older[module] == digest for module, digest in known.items())
                     for known in REVIEWED_MIGRATIONS.values()))
 
@@ -151,13 +161,13 @@ def switch(wizard, source_path: Path | None = None, *, rollback: bool = False) -
     config_hash = configuration_hash(source.config.parent)
     verb = "ROLLBACK" if rollback else "UPGRADE"
     print(f"{verb}: {source_meta['executor_image']['id'][:19]} -> {target_meta['executor_image']['id'][:19]}")
-    print("After a read-only flat-account check, Gateway will stop and both services will remain stopped.")
+    print("After a read-only maintenance holdings/order check, Gateway will stop and both services will remain stopped.")
     confirmation = f"{verb} {current.ibkr.account_type.upper()} {current.size_label}"
     if input(f"Type {confirmation} to continue: ").strip() != confirmation:
         return 3
     report = wizard.maintenance_report(wizard.image_metadata()["id"])
-    if report.get("account_flat") is not True or report.get("orders_submitted") != 0:
-        raise ConfigError("Complete read-only flat-account verification did not pass.")
+    if report.get("maintenance_ready") is not True or report.get("orders_submitted") != 0:
+        raise ConfigError("Complete read-only maintenance verification did not pass.")
     backup = wizard.state / "maintenance" / (datetime.now(UTC).strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8])
     record = {"phase": "pending", "operation": verb.lower(), "backup": str(backup),
               "from_release": str(source.release), "to_release": str(target.release),

@@ -162,14 +162,15 @@ def initial_config(path: Path, *, advanced: bool = False) -> int:
     return 0
 
 
-def require_flat(config: ExecutorConfig) -> float | None:
+def require_flat(config: ExecutorConfig, *, roots: tuple[str, ...] | None = None) -> float | None:
     """Wait for IBKR snapshot-end callbacks; an empty early cache is not proof.
 
     Returns NetLiquidation for a size preview when IBKR reports it.
     """
     from .ibkr import IBKRBroker
 
-    broker = IBKRBroker(config.ibkr, config.roots)
+    roots = config.roots if roots is None else roots
+    broker = IBKRBroker(config.ibkr, roots)
     try:
         broker.connect()
         if config.ibkr.account not in broker.managed_accounts:
@@ -179,7 +180,7 @@ def require_flat(config: ExecutorConfig) -> float | None:
         state = broker.state()
         if any(state.positions.values()) or any(o.working for o in state.orders.values()):
             raise ConfigError(
-                f"{'/'.join(config.roots)} has positions or working orders; settings were not changed. "
+                f"{'/'.join(roots)} has positions or working orders; settings were not changed. "
                 "Wait until flat and all orders are completed/cancelled."
             )
         try:
@@ -217,9 +218,10 @@ def change_settings(path: Path, *, root: str | None = None, quantity: int | None
                 raise ConfigError("the journal records an open position; wait until flat")
             if journal.halt_reason():
                 raise ConfigError("resolve the executor halt before changing settings")
-            equity = require_flat(old)
-            if set(new.roots) - set(old.roots):
-                equity = require_flat(new)
+            # Check the full old/new scope with one connection. Reconnecting
+            # immediately with the same client ID can race Gateway's disconnect.
+            roots = tuple(dict.fromkeys((*old.roots, *new.roots)))
+            equity = require_flat(old, roots=roots)
             if new.sizing is not None:
                 equity = equity if isinstance(equity, (int, float)) else None
                 if interactive:

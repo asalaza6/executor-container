@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--image", default="follow-executor:0.3.0")
+    parser.add_argument("--image", default="follow-executor:0.3.1")
     parser.add_argument("--launcher", type=Path, default=ROOT / "follow-container")
     args = parser.parse_args()
     real_docker = shutil.which("docker")

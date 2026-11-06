@@ -3,7 +3,7 @@
 English | [简体中文](SETUP.zh-CN.md)
 
 This guide installs **both Gateway and the Auto Quant executor in containers**
-using the `follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz` kit. Start with an
+using the `follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz` kit. Start with an
 IBKR **paper account**, which simulates trading. Use **Codex or Claude Code** to
 guide setup from scratch: [open the package and paste this prompt](../START_HERE.md).
 You do not need to write code, use GitHub or build an image.
@@ -60,14 +60,14 @@ also contains the complete commands for manual use.
 
 | Item | What to do with it |
 | --- | --- |
-| `follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz` | Save in your laptop's **Downloads** folder; leave it compressed. |
+| `follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz` | Save in your laptop's **Downloads** folder; leave it compressed. |
 | Matching `.tar.gz.sha256` file | Save beside it. This lets Ubuntu verify the download. |
 | Personal relay token | Keep private; enter it into the wizard later. It connects you to the signal service. |
 | Expected provider public-key fingerprint | Keep for comparison with readiness results. This identifies the signal provider. |
 | Support contact and optional Discord invitation | Use the contact supplied with your customer download. |
 
 Get both download files from Auto Quant's trusted channel. Discord may supply the
-files or a download link. These examples use **0.3.0**; if your version differs,
+files or a download link. These examples use **0.3.1**; if your version differs,
 use its included guide and matching filenames. Do not mix releases.
 
 First complete [IBKR account and secondary-login preparation](IBKR_ACCOUNT_SETUP.md):
@@ -180,14 +180,14 @@ Replace the IP placeholder, then paste the next command as **one line**. `scp`
 means secure file copy; keep the colon and `Downloads/` at the end.
 
 ```bash
-scp -i ./auto-quant.key follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz.sha256 ubuntu@YOUR_OCI_PUBLIC_IP:Downloads/
+scp -i ./auto-quant.key follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz.sha256 ubuntu@YOUR_OCI_PUBLIC_IP:Downloads/
 ```
 
 Wait for both transfers. **Back in Window A — Ubuntu**, run one line at a time:
 
 ```bash
 cd ~/Downloads
-sha256sum -c follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz.sha256
+sha256sum -c follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz.sha256
 ```
 
 **Checkpoint:** the archive's filename ends with **`OK`**. If you see `FAILED`,
@@ -197,8 +197,8 @@ or install a failed download.
 Extract into a permanent version folder in your Ubuntu home directory:
 
 ```bash
-tar -xzf follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz -C ~
-cd ~/follow-stack-0.3.0-ubuntu24.04-arm64-cp312
+tar -xzf follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz -C ~
+cd ~/follow-stack-0.3.1-ubuntu24.04-arm64-cp312
 ```
 
 No output from `tar` or `cd` is normal. Keep this extracted folder at this path;
@@ -249,7 +249,7 @@ ssh -i ./auto-quant.key ubuntu@YOUR_OCI_PUBLIC_IP
 **Once the Ubuntu prompt returns**, resume from the same folder:
 
 ```bash
-cd ~/follow-stack-0.3.0-ubuntu24.04-arm64-cp312
+cd ~/follow-stack-0.3.1-ubuntu24.04-arm64-cp312
 ./follow-stack setup
 ```
 
@@ -341,12 +341,18 @@ need a desktop or manual API changes. To inspect an unfinished login:
 3. In **Window B — Laptop**, from Downloads, replace the IP and run:
 
    ```bash
-   ssh -i ./auto-quant.key -N -L 5901:127.0.0.1:5901 ubuntu@YOUR_OCI_PUBLIC_IP
+   ssh -i ./auto-quant.key -o ExitOnForwardFailure=yes -N -L 127.0.0.1:5901:127.0.0.1:5901 ubuntu@YOUR_OCI_PUBLIC_IP
    ```
 
 4. A blank window without a new prompt is expected; keep it open. In TigerVNC,
    connect to **`localhost::5901`** (two colons). Other viewers: host `localhost`,
    port `5901`. Enter the separate recovery password.
+   On macOS you can also open Finder, press **Command+K**, and connect to
+   **`vnc://127.0.0.1:5901`**. Run the SSH command on your Mac, not inside Ubuntu
+   or OCI Cloud Shell. A Screen Sharing/Remote Management error does not mean
+   you should enable Sharing on your Mac: first check that Window B is still
+   connected without an SSH error and that `./follow-stack gateway status` in
+   Window A reports the Gateway running with the recovery desktop enabled.
 5. Inspect the paper login and complete IBKR notices yourself. If support asks
    you to inspect API settings, use **Configure → Settings**, then **API → Settings**
    as illustrated. Do not change mode, ports or settings just to match a screenshot.
@@ -450,7 +456,7 @@ Each new SSH session starts outside the release folder. Connect as in step 2,
 then run:
 
 ```bash
-cd ~/follow-stack-0.3.0-ubuntu24.04-arm64-cp312
+cd ~/follow-stack-0.3.1-ubuntu24.04-arm64-cp312
 ```
 
 | What you want | Command / action |
@@ -484,9 +490,9 @@ configuration, Gateway data and trading journal. Do not delete state to “start
 fresh.” Native installations need a reviewed migration; this fresh-install guide
 is not a migration procedure.
 
-**Updating from 0.2.0 to 0.3.0?** Follow the [upgrade guide](UPGRADE.md). It
-keeps your journal and token, installs the new kit, asks for your leverage
-fraction and regenerates the service.
+**Updating from 0.1.12, 0.2.0 or 0.3.0 to 0.3.1?** Follow the [upgrade guide](UPGRADE.md).
+It keeps your journal and token, installs the new kit and regenerates the
+services; from 0.1.12 or 0.2.0 you then choose your leverage fraction.
 
 For compatible container releases, use the stopped-and-flat procedure in the
 [container maintenance reference](CONTAINER_SETUP.md). An upgrade does not itself
@@ -504,10 +510,13 @@ authorize starting trading. Keep private backups out of chat and Discord.
 | `./follow-stack` not found | In Window A, `cd` into the extracted version folder first. |
 | Checksum `FAILED` | Stop; obtain matching archive/checksum files again from the trusted channel. |
 | No characters when typing a password/token | Normal hidden input. Enter once and press Enter. |
-| `Use matching recovery passwords of exactly 8 printable ASCII characters` | Rerun setup. Choose exactly 8 English letters/digits, no spaces, and enter twice identically. Saved account settings are reused. |
+| Recovery password length/character or confirmation error | Choose exactly 8 English letters/digits, no spaces, and enter twice identically. Setup asks again (the Gateway schedule questions repeat; press Enter to keep the defaults); Ctrl+C pauses. Older releases exit with `Use matching recovery passwords of exactly 8 printable ASCII characters`: rerun setup, which reuses saved account settings. |
+| `Run './follow-stack setup' first` / `Setup is incomplete` | Account settings may already be saved while Gateway setup is unfinished. Run `./follow-stack doctor`, then rerun `./follow-stack setup` from the same folder and Ubuntu login. Complete step 4/5 and wait for step 5/5 to pass; do not delete saved configuration. |
+| VNC connection fails / `Address already in use` | Keep the tunnel running in a separate laptop terminal. An occupied local port may belong to an existing tunnel; do not start another or kill an unknown process. Check the existing tunnel and Gateway status. Do not open VNC to the public internet. |
 | Docker permissions / reboot instruction | Reboot as instructed, reconnect and rerun setup from the same folder. Do not add `sudo` to `follow-stack`. |
 | No IBKR Mobile request | Paper login may not require one. Try readiness; inspect the recovery desktop if login is incomplete. |
 | `10197` / another session using market data | Release that session's market-data use yourself when appropriate, then retry. Review a live session's use before disconnecting it. |
+| `354` / market-data status `denied`, even though login and margin pass | IBKR reports that the requested market data is not subscribed. In Client Portal, open **Settings → Trading Platform → Market Data Subscriptions** and verify live data/API coverage for the selected contract and Gateway login username. Review any fees before subscribing. Trading permissions and margin approval are separate. Retry `./follow-stack check`; trading remains blocked until live quotes pass. |
 | Quote timeout | No usable quote arrived. Check market hours, data access and login, then retry when available. A timeout does not prove the market is closed. |
 | Existing installation, account mismatch, positions/orders or journal halt | Stop setup and contact support. Do not delete configuration/history or run `resume` to bypass the check. |
 

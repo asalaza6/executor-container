@@ -29,7 +29,7 @@ def docker(*args: str, check: bool = True) -> subprocess.CompletedProcess:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--image", default="follow-executor:0.3.0")
+    parser.add_argument("--image", default="follow-executor:0.3.1")
     args = parser.parse_args()
     names = []
     with tempfile.TemporaryDirectory(prefix="follow-container-test-") as directory:

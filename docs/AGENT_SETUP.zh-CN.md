@@ -35,7 +35,7 @@
 - 向导可以预览示例权重下的 NQ/MNQ 数量。新安装时会询问大致的 NetLiquidation 和 NQ 价格（按回车可跳过）；Gateway 登录后重新运行 `./follow-stack settings` 会使用 IBKR 的 NetLiquidation。`./follow-stack check` 会显示真实预览、权重为 1（最大仓位）时的保证金，以及会被拒绝的情况（基准为 0、数量取整为 0 张或超过 `risk.max_quantity`）。没有最低数量：小账户会跳过低权重的交易。
 - 启动确认包含仓位：`START PAPER BALANCE 0.5`（固定数量为 `START PAPER 1 MNQ`）。
 
-已有 0.2.0 客户按 [UPGRADE.zh-CN.md](UPGRADE.zh-CN.md) 升级；在选择余额仓位之前，其固定数量继续有效。
+已有 0.1.12、0.2.0 或 0.3.0 客户按 [UPGRADE.zh-CN.md](UPGRADE.zh-CN.md) 升级；其仓位设置（固定数量或余额仓位）保持不变。
 
 | 信息 | 获取方式 |
 | --- | --- |

@@ -99,6 +99,11 @@ def quote_readiness(broker, contract, timeout: float) -> dict:
         note = "A competing live session is using market data. Log out of that session deliberately, then retry."
     elif status == "ready":
         note = "A live bid, ask or last price was received for the selected contract."
+    elif status == "denied" and 354 in codes:
+        note = ("IBKR error 354: the requested live market data is not subscribed. "
+                "Check Market Data Subscriptions in IBKR Client Portal for the Gateway login username "
+                "and API access to the selected contract, then retry. Trading permissions and margin "
+                "approval do not provide market-data access.")
     elif status in ("pending", "idle"):
         status = "no_quote"
         note = "No live quote arrived before the timeout. The market may be closed; retry when live quotes are available."

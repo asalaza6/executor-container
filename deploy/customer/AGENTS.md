@@ -48,7 +48,7 @@ when needed, not a mandatory reason to change settings.
   (1 = the leader's full 6x balance sizing, trading NQ plus an MNQ remainder),
   or a fixed MNQ/NQ quantity. The customer chooses; explain it and show the
   preview and readiness-check split. Do not raise risk limits for them.
-- Existing 0.2.0 installations: follow `docs/UPGRADE.md` (or its Chinese
+- Existing 0.1.12, 0.2.0 or 0.3.0 installations: follow `docs/UPGRADE.md` (or its Chinese
   counterpart) while stopped and flat; never reinstall over them.
 - Start with paper trading. Get explicit agreement to the verified mode and size
   (`BALANCE f` with its split at example weights, or the fixed root and quantity) before the

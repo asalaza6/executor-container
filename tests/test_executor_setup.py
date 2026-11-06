@@ -20,7 +20,7 @@ from follow_executor.cli import main
 from follow_executor.config import ConfigError, load_config
 from follow_executor.executor import Executor
 from follow_executor.journal import Journal
-from follow_executor.local import bind_settings, exclusive
+from follow_executor.local import bind_settings, exclusive, settings_identity
 from follow_executor.setup import require_flat
 
 
@@ -80,7 +80,7 @@ class SetupTests(unittest.TestCase):
         with patch('follow_executor.setup.require_flat') as flat:
             code, output = self.call('settings', '--root', 'NQ', '--quantity', '1')
         self.assertEqual(code, 0, output)
-        self.assertEqual([c.args[0].root for c in flat.call_args_list], ['MNQ', 'NQ'])
+        flat.assert_called_once_with(config, roots=('MNQ', 'NQ'))
         config = load_config(self.path)
         self.assertEqual((config.root, config.quantity), ('NQ', 1))
         journal = Journal(config.journal_path)
@@ -191,7 +191,7 @@ class SetupTests(unittest.TestCase):
         with patch('follow_executor.setup.require_flat', return_value=250_000.0) as flat:
             code, output = self.call('settings', '--leverage-fraction', '0.25')
         self.assertEqual(code, 0, output)
-        self.assertEqual([c.args[0].roots for c in flat.call_args_list], [('MNQ',), ('NQ', 'MNQ')])
+        flat.assert_called_once_with(old, roots=('MNQ', 'NQ'))
         config = load_config(self.path)
         self.assertEqual(config.sizing.leverage_fraction, 0.25)
         journal = Journal(config.journal_path)
@@ -207,6 +207,63 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(code, 0, output)
         config = load_config(self.path)
         self.assertEqual((config.sizing, config.root, config.quantity), (None, 'MNQ', 1))
+
+    def test_fixed_to_balance_uses_one_broker_connection_for_both_roots(self):
+        config = self.configured()
+        broker = Mock(managed_accounts=(config.ibkr.account,))
+        broker.state.return_value = Mock(positions={}, orders={})
+        broker.net_liquidation.return_value = 250_000.0
+        with patch('follow_executor.ibkr.IBKRBroker', side_effect=[broker]) as factory:
+            code, output = self.call('settings', '--leverage-fraction', '1')
+        self.assertEqual(code, 0, output)
+        factory.assert_called_once_with(config.ibkr, ('MNQ', 'NQ'))
+        broker.connect.assert_called_once_with()
+        broker.wait_for_snapshot.assert_called_once_with()
+        broker.disconnect.assert_called_once_with()
+        broker.place.assert_not_called()
+        broker.cancel.assert_not_called()
+        self.assertEqual(load_config(self.path).sizing.leverage_fraction, 1)
+
+    def test_scope_changes_refuse_positions_orders_and_incomplete_snapshots_before_saving(self):
+        self.configured()
+        fixed = self.path.read_text()
+        balance_raw = json.loads(fixed)
+        balance_raw.pop('instrument')
+        balance_raw['sizing'] = {'mode': 'balance', 'leverage_fraction': 1}
+        balance = json.dumps(balance_raw)
+        for original, args in [(fixed, ('--leverage-fraction', '1')),
+                               (fixed, ('--root', 'NQ', '--quantity', '1')),
+                               (balance, ('--root', 'MNQ', '--quantity', '1'))]:
+            for failure in ('position_MNQ', 'position_NQ', 'order_MNQ', 'order_NQ', 'snapshot', 'account'):
+                with self.subTest(original=original == fixed, args=args, failure=failure):
+                    self.path.write_text(original)
+                    config = load_config(self.path)
+                    journal = Journal(config.journal_path)
+                    journal.set_state('settings_identity', settings_identity(config))
+                    journal.close()
+                    broker = Mock(managed_accounts=(config.ibkr.account,))
+                    broker.state.return_value = Mock(positions={}, orders={})
+                    if failure.startswith('position_'):
+                        broker.state.return_value.positions = {failure: 1}
+                    elif failure.startswith('order_'):
+                        broker.state.return_value.orders = {failure: Mock(working=True)}
+                    elif failure == 'snapshot':
+                        broker.wait_for_snapshot.side_effect = RuntimeError('incomplete snapshot')
+                    else:
+                        broker.managed_accounts = ()
+                    with patch('follow_executor.ibkr.IBKRBroker', side_effect=[broker]) as factory:
+                        code, output = self.call('settings', *args)
+                    self.assertEqual(code, 2, output)
+                    self.assertEqual(set(factory.call_args.args[1]), {'MNQ', 'NQ'})
+                    self.assertEqual(self.path.read_text(), original)
+                    journal = Journal(config.journal_path)
+                    try:
+                        self.assertEqual(journal.get_state('settings_identity'), settings_identity(config))
+                    finally:
+                        journal.close()
+                    broker.disconnect.assert_called_once_with()
+                    broker.place.assert_not_called()
+                    broker.cancel.assert_not_called()
 
     def test_interactive_settings_asks_for_the_fraction_with_an_ibkr_balance_preview(self):
         self.configured()

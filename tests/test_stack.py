@@ -109,6 +109,65 @@ class StackTests(unittest.TestCase):
         self.assertEqual([action for action, _ in self.calls], ["install", "check"])
         self.assertEqual(before, {path: path.read_bytes() for path in paths})
 
+    def test_recovery_password_typo_retries_without_aborting_setup(self):
+        # Each refused recovery password repeats the three Gateway schedule questions.
+        answers = ["paper", "DU1234567", "MNQ", "1", *[""] * 9, ""]
+        with (self.setup_environment(answers) as output,
+              patch("getpass.getpass", side_effect=["test-token", "too-long-password",
+                    "vnc-pass", "mismatch", "vnc-pass", "vnc-pass", "test-user", "test-password"])):
+            self.assertEqual(self.wizard.setup(), 0)
+        self.assertTrue(self.wizard.gateway_unit.exists())
+        self.assertEqual((self.wizard.gateway_dir / "vnc.password").read_text(), "vnc-pass\n")
+        self.assertEqual(output.getvalue().count("Nothing was saved"), 2)
+        self.assertNotIn("start", [action for action, _ in self.calls])
+        for secret in ("test-token", "too-long-password", "vnc-pass", "mismatch", "test-user", "test-password"):
+            self.assertNotIn(secret, output.getvalue())
+
+    def test_cancelled_gateway_setup_reports_missing_step_and_resumes_saved_account(self):
+        with (self.setup_environment(["paper", "DU1234567", "MNQ", "1", *[""] * 6]),
+              patch("getpass.getpass", side_effect=["test-token", "too-long-password", KeyboardInterrupt]),
+              self.assertRaises(KeyboardInterrupt)):
+            self.wizard.setup()
+        config = self.wizard.current_config()
+        paths = [self.wizard.config, config.token_path, config.journal_path]
+        before = {path: path.read_bytes() for path in paths}
+        self.assertFalse((self.wizard.gateway_dir / "gateway.json").exists())
+        self.assertFalse(self.wizard.gateway_unit.exists())
+        self.calls.clear()
+        with self.setup_environment([]) as output:
+            self.wizard.doctor()
+            with self.assertRaisesRegex(ConfigError, r"Gateway configuration \(step 4/5\)"):
+                self.wizard.start()
+        self.assertIn("Executor configuration: saved", output.getvalue())
+        self.assertIn("Gateway configuration: needs setup (step 4/5)", output.getvalue())
+        self.assertIn("Gateway service definition: missing (step 4/5)", output.getvalue())
+        self.assertEqual(self.calls, [])
+        with (self.setup_environment(["", "", "", ""]),
+              patch("getpass.getpass", side_effect=["vnc-pass", "vnc-pass", "test-user", "test-password"])):
+            self.assertEqual(self.wizard.setup(), 0)
+        self.assertEqual(before, {path: path.read_bytes() for path in paths})
+        self.assertEqual([action for action, _ in self.calls], ["install", "check"])
+
+    def test_other_gateway_configure_refusals_are_not_retried(self):
+        with (self.setup_environment(self.first_setup()),
+              patch.object(gateway, "configure", side_effect=ConfigError("Gateway setup cancelled")) as configure,
+              self.assertRaisesRegex(ConfigError, "Gateway setup cancelled")):
+            self.wizard.setup()
+        configure.assert_called_once()
+
+    def test_missing_gateway_files_are_not_reported_as_permissions_error(self):
+        directory = self.wizard.gateway_dir
+        with self.setup_environment([]):
+            with self.assertRaisesRegex(ConfigError, "gateway.json is missing"):
+                self.wizard.gateway_action("status")
+            directory.mkdir(parents=True, exist_ok=True)
+            private_write(directory / "gateway.json", json.dumps({"backend": "docker"}))
+            with self.assertRaisesRegex(ConfigError, "ibc.ini is missing"):
+                self.wizard.gateway_action("status")
+            (directory / "ibc.ini").symlink_to(directory / "absent")
+            with self.assertRaisesRegex(ConfigError, "private regular file"):
+                self.wizard.gateway_action("status")
+
     def test_failed_readiness_does_not_start_or_reset_and_can_retry(self):
         self.check_exit = 1
         with self.setup_environment(self.first_setup()) as output:

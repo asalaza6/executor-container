@@ -34,6 +34,19 @@ class QuoteReadinessTests(unittest.TestCase):
         self.assertEqual(result["status"], "no_quote")
         self.assertIn("may be closed", result["message"])
 
+    def test_missing_subscription_has_specific_advice_without_bypassing_quotes(self):
+        broker = self.broker("denied", [354])
+        result = quote_readiness(broker, object(), 0)
+        self.assertEqual(result["status"], "denied")
+        self.assertEqual(result["codes"], [354])
+        self.assertIn("Market Data Subscriptions", result["message"])
+        self.assertIn("Gateway login username", result["message"])
+        broker.place.assert_not_called()
+        for status, connected in (("ready", True), ("ready", False)):
+            with self.subTest(status=status, connected=connected):
+                result = quote_readiness(self.broker(status, [354], connected), object(), 0)
+                self.assertNotIn("not subscribed", result["message"])
+
     def test_live_delayed_and_disconnected_are_distinct(self):
         for status, connected, expected in (("ready", True, "ready"), ("delayed", True, "delayed"),
                                              ("ready", False, "disconnected")):

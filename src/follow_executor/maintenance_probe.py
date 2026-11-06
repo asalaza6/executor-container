@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Follow Executor contributors
-"""No-order maintenance gate: complete account-wide positions and open orders."""
+"""No-order maintenance gate: complete snapshots, allowing unrelated long stock holdings."""
 from __future__ import annotations
 
 from .config import ConfigError
@@ -13,10 +13,20 @@ class FlatAccountProbe(IBKRBroker):
         super().__init__(settings, root)
         self.account_positions = {}
         self.account_orders = {}
+        self.unrelated_stock_positions = {}
 
     def on_position(self, account, contract, position, average_cost):
         if account == self.settings.account:
-            self.account_positions[int(contract.conId)] = float(position)
+            contract_id = int(contract.conId)
+            quantity = float(position)
+            # Allow only positively identified, unrelated long stock holdings.
+            # Futures (including other roots), shorts and unknown types still block.
+            symbol = getattr(contract, "symbol", "")
+            unrelated_stock = (getattr(contract, "secType", "") == "STK"
+                               and bool(symbol) and symbol not in ("MNQ", "NQ", self.root)
+                               and quantity >= 0)
+            self.account_positions[contract_id] = 0.0 if unrelated_stock else quantity
+            self.unrelated_stock_positions[contract_id] = quantity if unrelated_stock else 0.0
 
     def on_open_order(self, order_id, contract, order, order_state):
         if order.account in ("", self.settings.account) and not getattr(order, "whatIf", False):
@@ -42,8 +52,9 @@ def check(config) -> dict:
         broker.refresh()
         broker.wait_for_snapshot()
         if any(broker.account_positions.values()) or any(broker.account_orders.values()):
-            raise ConfigError("The account has positions or working orders; maintenance was refused.")
-        report["account_flat"] = True
+            raise ConfigError("The account has blocking positions or working orders; maintenance was refused.")
+        report["maintenance_ready"] = True
+        report["unrelated_stock_holdings"] = sum(bool(q) for q in broker.unrelated_stock_positions.values())
         report["orders_submitted"] = 0
         return report
     finally:

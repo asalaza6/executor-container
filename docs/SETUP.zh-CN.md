@@ -2,7 +2,7 @@
 
 [English](SETUP.md) | 简体中文
 
-本指南使用 `follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz` 安装包，
+本指南使用 `follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz` 安装包，
 将 **Gateway 和 Auto Quant 执行器一起安装在容器中**。先使用 IBKR **模拟账户
 （paper）**，不涉及真实资金交易。请用 **Codex 或 Claude Code** 按[从这里开始](../START_HERE.zh-CN.md)
 打开安装包并粘贴提示，让助手从零指导。你无需编写代码、使用 GitHub 或构建镜像。
@@ -56,14 +56,14 @@
 
 | 资料 | 用途与保存方式 |
 | --- | --- |
-| `follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz` | 保存到电脑的 **Downloads（下载）**文件夹，暂时不要解压。 |
+| `follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz` | 保存到电脑的 **Downloads（下载）**文件夹，暂时不要解压。 |
 | 匹配的 `.tar.gz.sha256` 文件 | 与安装包放在一起，用于检查下载是否完整且未改变。 |
 | 个人 relay token（信号服务访问令牌） | 私密保存，稍后在向导中输入，用于连接信号服务。 |
 | 预期的提供方公钥指纹 | 与就绪检查结果对比，确认信号提供方身份。 |
 | 支持联系方式及可选的 Discord 邀请 | 使用客户下载渠道提供的联系方式。 |
 
 从 Auto Quant 的可信渠道取得两个下载文件。Discord 可以提供附件或下载链接。
-本指南使用 **0.3.0**；如果你拿到的版本不同，请使用该版本包内的指南和匹配文件名，
+本指南使用 **0.3.1**；如果你拿到的版本不同，请使用该版本包内的指南和匹配文件名，
 不要混用不同版本的文件。
 
 先完成 [IBKR 账户及第二用户名准备](IBKR_ACCOUNT_SETUP.zh-CN.md)：
@@ -165,14 +165,14 @@ cd ~/Downloads
 保留末尾的冒号和 `Downloads/`。
 
 ```bash
-scp -i ./auto-quant.key follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz.sha256 ubuntu@YOUR_OCI_PUBLIC_IP:Downloads/
+scp -i ./auto-quant.key follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz.sha256 ubuntu@YOUR_OCI_PUBLIC_IP:Downloads/
 ```
 
 等待两个文件都上传完成。**回到窗口 A——Ubuntu**，一次运行一行：
 
 ```bash
 cd ~/Downloads
-sha256sum -c follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz.sha256
+sha256sum -c follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz.sha256
 ```
 
 **本步完成标志：**文件名后显示 **`OK`**。如果显示 `FAILED`，停止操作，从可信
@@ -181,8 +181,8 @@ sha256sum -c follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz.sha256
 解压到 Ubuntu 家目录中的固定版本目录：
 
 ```bash
-tar -xzf follow-stack-0.3.0-ubuntu24.04-arm64-cp312.tar.gz -C ~
-cd ~/follow-stack-0.3.0-ubuntu24.04-arm64-cp312
+tar -xzf follow-stack-0.3.1-ubuntu24.04-arm64-cp312.tar.gz -C ~
+cd ~/follow-stack-0.3.1-ubuntu24.04-arm64-cp312
 ```
 
 `tar` 或 `cd` 没有输出通常是正常的。保留这个目录的原路径，已安装的 Gateway
@@ -232,7 +232,7 @@ ssh -i ./auto-quant.key ubuntu@YOUR_OCI_PUBLIC_IP
 **看到 Ubuntu 提示符后**，回到同一个目录继续：
 
 ```bash
-cd ~/follow-stack-0.3.0-ubuntu24.04-arm64-cp312
+cd ~/follow-stack-0.3.1-ubuntu24.04-arm64-cp312
 ./follow-stack setup
 ```
 
@@ -314,12 +314,17 @@ After login, press Enter to check readiness, or type later to pause:
 3. 在 **窗口 B——本机**的 Downloads 目录中，替换 IP 后运行：
 
    ```bash
-   ssh -i ./auto-quant.key -N -L 5901:127.0.0.1:5901 ubuntu@YOUR_OCI_PUBLIC_IP
+   ssh -i ./auto-quant.key -o ExitOnForwardFailure=yes -N -L 127.0.0.1:5901:127.0.0.1:5901 ubuntu@YOUR_OCI_PUBLIC_IP
    ```
 
 4. 窗口空白、没有新提示符属于正常现象，请保持打开。TigerVNC 连接地址为
    **`localhost::5901`**（两个冒号）；其他查看器填写主机 `localhost`、端口 `5901`。
    输入单独设置的恢复密码。
+   macOS 也可在 Finder 按 **Command+K**，连接 **`vnc://127.0.0.1:5901`**。
+   SSH 命令必须在 Mac 本机运行，不是在 Ubuntu 或 OCI Cloud Shell 中运行。
+   如果提示启用 Screen Sharing／Remote Management，不需要为此开启 Mac 的共享服务；
+   先确认窗口 B 的 SSH 连接仍在且没有报错，再在窗口 A 用
+   `./follow-stack gateway status` 确认 Gateway 正在运行且已启用恢复画面。
 5. 确认模拟登录并自行处理 IBKR 提示。如果客服需要你检查 API 设置，位置如下图：
    **Configure → Settings**，然后 **API → Settings**。不要仅为与截图一致而改变
    账户模式、端口或已有设置。
@@ -412,7 +417,7 @@ After login, press Enter to check readiness, or type later to pause:
 每次重新 SSH 登录，通常不在版本目录中。按第 2 步连接后先运行：
 
 ```bash
-cd ~/follow-stack-0.3.0-ubuntu24.04-arm64-cp312
+cd ~/follow-stack-0.3.1-ubuntu24.04-arm64-cp312
 ```
 
 | 目的 | 命令／操作 |
@@ -441,8 +446,8 @@ cd ~/follow-stack-0.3.0-ubuntu24.04-arm64-cp312
 首次更新前联系 Auto Quant。保留旧版目录、配置、Gateway 数据及交易记录，不要删除
 状态来“从头开始”。原生安装需要审查后的迁移流程，本指南的全新安装步骤不是迁移流程。
 
-**从 0.2.0 升级到 0.3.0？** 请按[升级指南](UPGRADE.zh-CN.md)操作。它会保留交易日志和令牌，
-安装新安装包，询问你的杠杆比例，并重新生成服务。
+**从 0.1.12、0.2.0 或 0.3.0 升级到 0.3.1？** 请按[升级指南](UPGRADE.zh-CN.md)操作。它会保留交易日志和令牌，
+安装新安装包并重新生成服务；从 0.1.12 或 0.2.0 升级后再选择杠杆比例。
 
 兼容的容器版本使用[容器维护参考](CONTAINER_SETUP.zh-CN.md)中的停止且空仓更新步骤。
 升级本身不代表同意启动交易。不要把私密备份发送到聊天或 Discord。
@@ -459,10 +464,13 @@ cd ~/follow-stack-0.3.0-ubuntu24.04-arm64-cp312
 | 找不到 `./follow-stack` | 在窗口 A 先 `cd` 进入解压后的版本目录。 |
 | 校验显示 `FAILED` | 停止，从可信渠道重新获取匹配安装包及校验文件。 |
 | 输入密码／令牌无显示 | 正常隐藏输入，输入一次后按回车。 |
-| `Use matching recovery passwords of exactly 8 printable ASCII characters` | 重跑 setup，选择恰好 8 个英文字母／数字，不含空格，两次输入完全一致；已保存账户设置会复用。 |
+| 恢复密码长度／字符不符或两次输入不同 | 选择恰好 8 个英文字母／数字，不含空格，两次输入完全一致。向导会重新询问（Gateway 时间表问题会重复，按回车保留默认值），Ctrl+C 暂停。旧版本会报 `Use matching recovery passwords of exactly 8 printable ASCII characters` 并退出；重跑 setup 会复用已保存账户设置。 |
+| `Run './follow-stack setup' first`／`Setup is incomplete` | 账户设置可能已保存，但 Gateway 尚未配置完成。运行 `./follow-stack doctor`，用相同 Ubuntu 用户在原目录重跑 `./follow-stack setup`，完成第 4/5 步并等待第 5/5 步检查通过；不要删除已保存配置。 |
+| VNC 连接失败／`Address already in use` | 在本机单独的终端窗口保持隧道运行。端口占用可能是已有隧道，不要重复启动或终止不明进程；检查原隧道及 Gateway 状态。不要向公网开放 VNC。 |
 | Docker 权限或重启提示 | 按指示重启、重新连接，在同一目录重跑 setup，不要给 `follow-stack` 加 sudo。 |
 | 没有 IBKR Mobile 请求 | 模拟登录可能不需要。先尝试就绪检查；登录未完成时查看恢复画面。 |
 | `10197`／其他会话占用行情 | 在适当时自行释放其他会话的行情占用再检查；断开真实会话前先确认其用途。 |
+| `354`／行情状态 `denied`，但登录和保证金检查通过 | IBKR 表示未订阅所请求的行情。在 Client Portal 的 **Settings → Trading Platform → Market Data Subscriptions** 检查所选合约及 Gateway 登录用户名的实时行情和 API 权限；订阅前确认费用。交易权限、保证金与行情权限是分开的。重跑 `./follow-stack check`；实时行情通过前仍不能启动交易。 |
 | 行情超时 | 没有收到可用报价。检查交易时段、行情权限及登录，行情恢复后重试；超时不等于已确认休市。 |
 | 已有安装、账户不符、存在持仓／订单或 journal halt | 停止安装并联系支持。不要删除配置／历史，也不要用 `resume` 绕过检查。 |
 
