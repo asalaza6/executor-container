@@ -871,11 +871,22 @@ class Executor:
             value = float(self.broker.net_liquidation())
         except Exception as exc:  # noqa: BLE001 - sizing reuses the last base instead
             self._warn_once("net_liquidation", f"NetLiquidation unavailable: {exc}")
+            self._record_sizing_health("unavailable", now)
             return None
         if not math.isfinite(value) or value <= 0:
+            self._record_sizing_health("unavailable", now)
             return None
+        self._record_sizing_health("ready", now)
         self._net_liquidation_cache = (now, value)
         return value
+
+    def _record_sizing_health(self, status: str, now: datetime) -> None:
+        previous = json.loads(self.journal.get_state("sizing_health") or "null")
+        current = {"status": status, "checked_at": now.isoformat()}
+        self.journal.set_state("sizing_health", json.dumps(current))
+        if previous is None or previous["status"] != status:
+            self.journal.log("sizing_health", current)
+            LOGGER.info("Balance sizing account-value health: %s", status)
 
     def _size_entry(self, state: BrokerState, now: datetime) -> MarkTrade | None:
         """Size a new flat entry once, before its orders, and persist the result."""

@@ -99,3 +99,18 @@ IBC and native Gateway downloads are also checksum-pinned in their helpers.
 A changed vendor download must be reviewed and released in a new package.
 See [IBC operations](IBC.md) for credentials, scheduling and restart behavior. The customer bytecode release
 requires CPython 3.12 on Ubuntu 24.04 ARM64; Python 3.13+ needs a new build.
+
+
+### Account-value subscription failures in balance mode
+
+On Gateway API server version 226, protobuf account-summary cancellation can leave
+subscriptions active: two reads succeed, then IBKR error 322 rejects further
+requests. This adapter uses the legacy cancellation message for that message and
+server version only. All other API messages retain SDK negotiation.
+
+`./follow-stack status` includes `sizing.account_value_health` with `status` and
+`checked_at` from the running executor. Inspect the timestamp as well as the
+status; an old record is not proof of current readiness. Gateway handshake health
+alone does not establish balance-sizing readiness. A failed account-value read
+still refuses an entry when no earlier sizing base exists. Never reset the
+journal or replay a refused signal to recover a missed trade.

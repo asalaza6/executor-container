@@ -366,6 +366,7 @@ def command_status(config: ExecutorConfig) -> int:
         "sizing": None if config.sizing is None else {
             "mode": config.sizing.mode, "leverage_fraction": config.sizing.leverage_fraction,
             "last_base": json.loads(journal.get_state("balance_base") or "null"),
+            "account_value_health": json.loads(journal.get_state("sizing_health") or "null"),
         },
         "trades": journal.recent("trades", 5),
         "orders": journal.recent("orders", 10),

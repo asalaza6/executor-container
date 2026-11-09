@@ -127,6 +127,16 @@ class IBKRBroker:
                 EWrapper.__init__(self)
                 EClient.__init__(self, self)
 
+            def useProtoBuf(self, msgId: int) -> bool:
+                from ibapi.message import OUT
+
+                # Gateway server 226 accepts protobuf summary requests but does
+                # not release their subscriptions on protobuf cancellation.
+                # Keep every other message/version on the SDK's negotiated path.
+                if msgId == OUT.CANCEL_ACCOUNT_SUMMARY and self.serverVersion() == 226:
+                    return False
+                return super().useProtoBuf(msgId)
+
             def nextValidId(self, orderId: int) -> None:
                 with owner._lock:
                     owner._next_id = max(orderId, owner._next_id or 0)

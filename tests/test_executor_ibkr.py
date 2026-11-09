@@ -424,3 +424,41 @@ class BookAdapterTests(unittest.TestCase):
         self.assertEqual(broker.quote_price(nq.con_id), 21000.0)
         broker.on_tick_price(request_id, 4, 21001.0)
         self.assertEqual(broker.quote_price(nq.con_id), 21001.0)
+
+
+@unittest.skipIf(Contract is None, "ibapi is not installed")
+class SummaryCancellationWireTests(unittest.TestCase):
+    def test_server_226_sends_legacy_cancel_with_matching_request_id(self):
+        from unittest.mock import patch
+
+        from ibapi.message import OUT
+
+        from follow_executor.ibkr import IBKRBroker
+
+        app = IBKRBroker(SETTINGS, "MNQ")._app
+        with patch.object(app, 'serverVersion', return_value=226), \
+                patch.object(app, 'isConnected', return_value=True), \
+                patch.object(app, 'sendMsg') as legacy, \
+                patch.object(app, 'sendMsgProtoBuf') as protobuf:
+            for request_id in range(1_000_000, 1_000_006):
+                app.reqAccountSummary(request_id, "All", "NetLiquidation")
+                app.cancelAccountSummary(request_id)
+                self.assertEqual(legacy.call_args.args, (OUT.CANCEL_ACCOUNT_SUMMARY, f"1\0{request_id}\0"))
+            self.assertEqual(legacy.call_count, 6)
+            self.assertEqual(protobuf.call_count, 6)  # Requests still use protobuf.
+
+    def test_other_server_versions_keep_sdk_negotiation(self):
+        from unittest.mock import patch
+
+        from ibapi.client import EClient
+        from ibapi.message import OUT
+
+        from follow_executor.ibkr import IBKRBroker
+
+        app = IBKRBroker(SETTINGS, "MNQ")._app
+        for version in (180, 225, 227):
+            with self.subTest(version=version), patch.object(app, 'serverVersion', return_value=version):
+                self.assertEqual(app.useProtoBuf(OUT.CANCEL_ACCOUNT_SUMMARY),
+                                 EClient.useProtoBuf(app, OUT.CANCEL_ACCOUNT_SUMMARY))
+                self.assertEqual(app.useProtoBuf(OUT.REQ_ACCOUNT_SUMMARY),
+                                 EClient.useProtoBuf(app, OUT.REQ_ACCOUNT_SUMMARY))

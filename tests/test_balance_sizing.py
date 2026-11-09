@@ -377,6 +377,20 @@ class BookSizingRuleTests(BookTestCase):
         self.settle()
         self.assertEqual(self.broker.held(), {"NQ": 1, "MNQ": 2})
 
+    def test_account_value_health_records_failure_and_recovery_without_guessing_size(self) -> None:
+        self.broker.net_liq_error = TimeoutError("summary timed out")
+        self.assertIsNone(self.executor._net_liquidation(self.clock()))
+        failed = json.loads(self.journal.get_state("sizing_health"))
+        self.assertEqual(failed["status"], "unavailable")
+        self.assertIn("checked_at", failed)
+        self.assertIsNone(self.journal.get_state("balance_base"))
+        self.broker.net_liq_error = None
+        self.clock.advance(30)
+        self.assertGreater(self.executor._net_liquidation(self.clock()), 0)
+        recovered = json.loads(self.journal.get_state("sizing_health"))
+        self.assertEqual(recovered["status"], "ready")
+        self.assertNotEqual(recovered["checked_at"], failed["checked_at"])
+
     def test_net_liquidation_warmup_is_throttled_while_ibkr_cannot_report_it(self) -> None:
         self.broker.net_liq_error = TimeoutError("summary timed out")
         self.executor.on_signal(target(1, "exit", "flat"))
